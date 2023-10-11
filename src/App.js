@@ -8,76 +8,88 @@ import AddItem from './components/AddItem';
 import SearchItem from './components/SearchItem';
 import API_REQUEST from './components/ApiRequest';
 function App() {
-  const API_URL = "http://localhost:3500/items";
-  const [items, setItems] = useState([]) ; // || or simple array is for if user delete alll the data then in ocal storage you have an array  //this is for storing in local like browser        // Simple use State HOOK
+  const API_URL = 'http://localhost:3500/items';
+
+  const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState('');
-  const [search, setSearch] = useState('')
- const [fetchError , setfetchError] = useState(null); 
- const [isLoading , setisLoading] =useState(true);
-  useEffect(()=>{
-    const fetchItems  = async () =>{
-     try{
-      const response = await fetch(API_URL);
-      if(!response.ok)throw Error("Did not recieve expected data ")
-      const listItems = await response.json();
-      console.log(listItems);
-      setItems(listItems);   //if ites is loaded then seterror to null
-      setfetchError(null);
+  const [search, setSearch] = useState('');
+  const [fetchError, setFetchError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-     }catch(err){
-      console.log(err.stack)  // if error is expected then show error
-       setfetchError(err.message)
-     } finally{
-      setisLoading(false);
-     }
-    } 
+  useEffect(() => {
 
-    
-    setTimeout(() => {
-      fetchItems();  
-    }, 2000);
-       //it will store the the new items in local storage whenever you enter new item  
-  }, [] )  // items is for whenever we change in item it will use local storage 
-  // if we simply enter [] then this will change after every reload
+    const fetchItems = async () => {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw Error('Did not receive expected data');
+        const listItems = await response.json();
+        setItems(listItems);
+        setFetchError(null);
+      } catch (err) {
+        setFetchError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
 
+    setTimeout(() => fetchItems(), 2000);
 
-      // this will store localy in browser as
-  
+  }, [])
+
   const addItem = async (item) => {
-    const id = items.length ? items[items.length - 1].id + 1 : 1;  // length starts from 1 so we can minus by 1 because of array starts from 0 then add + 1 for newer id 
-    const myNewItem = { id, checked: false, item };  // this is the new that is added
-    const listItems = [...items, myNewItem];       // Finaly the spread operator use all the previous items and added new item in listItem Array 
-    setItems(listItems);  // this will store localy in browser as
+    const id = items.length ? items[items.length - 1].id + 1 : 1;
+    const myNewItem = { id, checked: false, item };
+    const listItems = [...items, myNewItem];
+    setItems(listItems);
 
-    const postOptions ={
-      method : 'POST' ,
-      headers : { 
-        'Content-Type' :  'applictaion/json'
+    const postOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(myNewItem)
     }
-    const result = await API_REQUEST(API_URL , postOptions)
-    if(result) setfetchError(result);
+    const result = await apiRequest(API_URL, postOptions);
+    if (result) setFetchError(result);
   }
 
-  const handleCheck = (id) => {        // Handlecheck function that keep parameter id 
-    const listItems = items.map((item) => item.id === id ? { ...item, checked: !item.checked } : item)                  // Map func that checks item.id is equal to that id that clicked using ternary operator then use spread to check itme array then !item.checked changed the state
+  const handleCheck = async (id) => {
+    const listItems = items.map((item) => item.id === id ? { ...item, checked: !item.checked } : item);
     setItems(listItems);
+
+    const myItem = listItems.filter((item) => item.id === id);
+    const updateOptions = {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ checked: myItem[0].checked })
+    };
+    const reqUrl = `${API_URL}/${id}`;
+    const result = await apiRequest(reqUrl, updateOptions);
+    if (result) setFetchError(result);
   }
-  const handleDelete = (id) => {
-    const listItems = items.filter((item) => item.id !== id);  // it will delete   
+
+  const handleDelete = async (id) => {
+    const listItems = items.filter((item) => item.id !== id);
     setItems(listItems);
+
+    const deleteOptions = { method: 'DELETE' };
+    const reqUrl = `${API_URL}/${id}`;
+    const result = await apiRequest(reqUrl, deleteOptions);
+    if (result) setFetchError(result);
   }
+
   const handleSubmit = (e) => {
-    e.preventDefault();  //it wont reload the page
-    if (!newItem) return;    // if thereis nothing in input box then simply return 
+    e.preventDefault();
+    if (!newItem) return;
     addItem(newItem);
-    setNewItem('');  //For disapperaing the input state "for clear the input box "
+    setNewItem('');
   }
+
   return (
     <div className="App">
-      <Header title="Grocieries List" />
-
+      <Header title="Grocery List" />
       <AddItem
         newItem={newItem}
         setNewItem={setNewItem}
@@ -85,17 +97,17 @@ function App() {
       />
       <SearchItem
         search={search}
-        setSearch={setSearch} />
-        <main>
-          {isLoading && <p>Loading Items...</p>}
-          {fetchError && <p style={{color: "red"}} >{`Error: ${fetchError}`}</p>}
-     {!fetchError && !isLoading && <Section items={items.filter(item => ((item.item).toLowerCase()).includes
-        (search.toLowerCase()))}
-        handleCheck={handleCheck}
-        handleDelete={handleDelete}
-      />}
+        setSearch={setSearch}
+      />
+      <main>
+        {isLoading && <p>Loading Items...</p>}
+        {fetchError && <p style={{ color: "red" }}>{`Error: ${fetchError}`}</p>}
+        {!fetchError && !isLoading && <Content
+          items={items.filter(item => ((item.item).toLowerCase()).includes(search.toLowerCase()))}
+          handleCheck={handleCheck}
+          handleDelete={handleDelete}
+        />}
       </main>
-
       <Footer length={items.length} />
     </div>
   );
